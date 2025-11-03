@@ -1,0 +1,22 @@
+{
+    "name": "Inventario Pro",
+    "short_name": "Inventario",
+    "description": "Aplicación de Gestión de Inventarios Físicos (PWA)",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "icon-512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}

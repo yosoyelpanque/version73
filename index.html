@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Pro v7.3 - Gestión de Activos</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-gray-800">
+
+    <div id="read-only-mode-overlay" class="hidden read-only-overlay">
+        <div class="read-only-banner">
+            <i class="fa-solid fa-lock"></i>
+            <span>MODO DE SÓLO LECTURA (CONSULTA): No se permiten modificaciones.</span>
+        </div>
+    </div>
+
+
+    <div id="loading-overlay" class="modal-overlay" style="z-index: 2000;">
+        <div class="text-white text-xl font-bold text-center w-full max-w-xs">
+            <i id="loading-spinner" class="fa-solid fa-spinner fa-spin fa-2x"></i>
+            <p id="loading-text" class="mt-2">Procesando archivo...</p>
+        </div>
+    </div>
+    
+    <div id="import-progress-modal" class="modal-overlay" style="z-index: 2001;">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Restaurando Fotografías</h3>
+            <p id="import-progress-text" class="text-gray-600 mb-4 text-center">Iniciando...</p>
+            <div class="progress-bar-container">
+                <div id="import-progress-bar">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-sm" tabindex="-1">
+            <h3 id="modal-title" class="text-xl font-bold mb-4">Confirmación</h3>
+            <p id="modal-text" class="text-gray-600 mb-6">¿Estás seguro?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="modal-cancel" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="modal-confirm" class="px-4 py-2 rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="preprint-edit-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 id="preprint-title" class="text-xl font-bold mb-4">Preparar Impresión</h3>
+            <p class="text-gray-600 mb-6">Puedes editar los siguientes campos antes de generar el documento final.</p>
+            <div id="preprint-fields" class="space-y-4">
+                </div>
+            <div class="flex justify-end space-x-4 mt-6">
+                <button id="preprint-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="preprint-confirm-btn" class="px-4 py-2 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors">Confirmar y Generar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="log-modal" class="modal-overlay">
+    <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl">
+            <h3 class="text-xl font-bold mb-4">Registro de Actividad (Log)</h3>
+            <div id="log-content" class="h-96 overflow-y-auto bg-gray-100 dark:bg-slate-800 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="log-close-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="qr-display-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-xs text-center">
+            <h3 id="qr-display-title" class="text-xl font-bold mb-4">Código QR del Bien</h3>
+            <div id="qr-code-display" class="flex justify-center items-center p-4 border rounded-lg">
+                </div>
+            <div class="flex justify-end mt-6">
+                <button id="qr-display-close-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="item-details-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+            <h3 id="item-details-title" class="text-xl font-bold mb-4">Detalles del Bien</h3>
+            <div id="item-details-content" class="space-y-2 text-gray-700 dark:text-gray-300">
+                </div>
+            <div class="flex justify-end mt-6">
+                <button id="item-details-close-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transfer-photo-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 id="transfer-photo-title" class="text-xl font-bold mb-4">Transferir Fotografía</h3>
+            <p id="transfer-photo-text" class="text-gray-600 mb-4">El bien adicional que estás eliminando tiene una foto. ¿Deseas transferirla a un bien pendiente del inventario?</p>
+            <img id="transfer-photo-preview" src="" alt="Foto a transferir" class="max-w-xs max-h-40 mx-auto rounded-lg shadow-md mb-4">
+            
+            <div class="space-y-2">
+                <label for="transfer-photo-search" class="block text-sm font-medium">Buscar bien pendiente (por clave, desc, serie):</label>
+                <input type="text" id="transfer-photo-search" class="w-full rounded-md border p-2">
+                <label for="transfer-photo-select" class="block text-sm font-medium">Seleccionar bien pendiente:</label>
+                <select id="transfer-photo-select" class="w-full rounded-md border p-2 h-32" size="5">
+                    <option value="">-- Busca un bien --</option>
+                </select>
+            </div>
+
+            <div class="flex justify-between space-x-4 mt-6">
+                <div>
+                    <button id="transfer-photo-skip-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">No transferir y Eliminar</button>
+                </div>
+                <div>
+                    <button id="transfer-photo-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancelar</button>
+                    <button id="transfer-photo-confirm-btn" class="px-4 py-2 rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition-colors" disabled>Transferir y Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="formato-entrada-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-sm text-center">
+            <h3 class="text-xl font-bold mb-4">Bien Personal</h3>
+            <p class="text-gray-600 mb-6">¿Este bien tiene formato de entrada?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="formato-entrada-no" class="px-6 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors font-semibold">No</button>
+                <button id="formato-entrada-si" class="px-6 py-2 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors font-semibold">Sí</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reassign-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 id="reassign-title" class="text-xl font-bold mb-4">Acción Requerida para el Área</h3>
+            <p id="reassign-text" class="text-gray-600 mb-6">El listado que estás eliminando pertenece a un área que tiene usuarios o bienes asociados. ¿Qué deseas hacer con ellos?</p>
+            <div id="reassign-options" class="space-y-4">
+                <div>
+                    <label for="reassign-area-select" class="block text-sm font-medium">Reasignar a una nueva área:</label>
+                    <select id="reassign-area-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></select>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-6">
+                <button id="reassign-confirm-btn" class="px-4 py-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors">Reasignar y Eliminar</button>
+                <button id="reassign-keep-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Mantener en Área Original</button>
+                <button id="reassign-delete-all-btn" class="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors">Eliminar Todo de Esta Área</button>
+                <button id="reassign-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="area-closure-modal" class="modal-overlay">
+    <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 id="area-closure-title" class="text-xl font-bold mb-4">Cerrar Acta de Inventario</h3>
+            <p class="text-gray-600 mb-6">¡Felicidades! Se han ubicado todos los bienes de esta área. Ingresa los datos del responsable para generar el acta de cierre.</p>
+            <div class="space-y-4">
+                 <div>
+                    <label for="area-closure-responsible" class="block text-sm font-medium">Nombre del Responsable que Recibe</label>
+                    <input type="text" id="area-closure-responsible" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nombre completo">
+                </div>
+                <div>
+                    <label for="area-closure-location" class="block text-sm font-medium">Ubicación Física del Responsable</label>
+                    <input type="text" id="area-closure-location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ej. Oficina 1, Cubículo 5">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-4 mt-6">
+                <button id="area-closure-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="area-closure-confirm-btn" class="px-4 py-2 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors">Confirmar y Generar Reporte</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notes-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Añadir/Editar Nota</h3>
+            <textarea id="note-textarea" class="w-full h-32 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Escribe tu nota aquí..."></textarea>
+            <div class="flex justify-end space-x-4 mt-4">
+                <button id="note-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="note-save-btn" class="px-4 py-2 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors">Guardar Nota</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="edit-adicional-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Editar Bien Adicional</h3>
+            <form id="edit-adicional-form" class="space-y-4">
+                <div><label for="edit-ad-clave">Clave Única</label><input type="text" id="edit-ad-clave" name="clave" class="w-full rounded-md border p-2"></div>
+                <div><label for="edit-ad-descripcion">Descripción</label><input type="text" id="edit-ad-descripcion" name="descripcion" class="w-full rounded-md border p-2"></div>
+                <div><label for="edit-ad-marca">Marca</label><input type="text" id="edit-ad-marca" name="marca" class="w-full rounded-md border p-2"></div>
+                <div><label for="edit-ad-modelo">Modelo</label><input type="text" id="edit-ad-modelo" name="modelo" class="w-full rounded-md border p-2"></div>
+                <div><label for="edit-ad-serie">Serie</label><input type="text" id="edit-ad-serie" name="serie" class="w-full rounded-md border p-2"></div>
+                <div><label for="edit-ad-area">Área de Procedencia</label><input type="text" id="edit-ad-area" name="area" class="w-full rounded-md border p-2"></div>
+                <div>
+                    <label class="block text-sm font-medium">Bien Personal</label>
+                    <div class="flex items-center space-x-4 mt-1">
+                        <label><input type="radio" name="personal" value="Si"> Sí</label>
+                        <label><input type="radio" name="personal" value="No"> No</label>
+                    </div>
+                </div>
+            </form>
+            <div class="flex justify-end space-x-4 mt-6">
+                <button id="edit-adicional-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="edit-adicional-save-btn" class="px-4 py-2 rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition-colors">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="photo-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 id="photo-modal-title" class="text-xl font-bold mb-4">Foto del Bien</h3>
+            
+            <div id="photo-view-container" class="hidden text-center mb-4">
+                <img id="item-photo-img" src="" alt="Foto del bien" class="max-w-full max-h-64 mx-auto rounded-lg shadow-md">
+                 <button id="delete-photo-btn" class="mt-4 px-4 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors text-sm">
+                    <i class="fa-solid fa-trash-can mr-2"></i>Eliminar Foto
+                </button>
+            </div>
+
+            <div id="photo-upload-container">
+                <p id="photo-message" class="text-center text-gray-600 dark:text-slate-400 mb-6">Selecciona un método para añadir la fotografía (máx 2MB).</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label for="photo-input" class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-indigo-500 dark:text-indigo-400 mb-3"></i>
+                        <span class="font-semibold text-gray-800 dark:text-slate-200">Subir Archivo</span>
+                        <span class="text-sm text-gray-500 dark:text-slate-400">Desde tu dispositivo</span>
+                    </label>
+                    <input type="file" id="photo-input" class="hidden" accept="image/*">
+
+                    <button id="use-camera-btn" class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 dark:border-slate-600 rounded-lg hover:border-gray-800 dark:hover:border-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                        <i class="fa-solid fa-camera-retro text-4xl text-gray-700 dark:text-slate-300 mb-3"></i>
+                        <span class="font-semibold text-gray-800 dark:text-slate-200">Usar Cámara</span>
+                        <span class="text-sm text-gray-500 dark:text-slate-400">Capturar en el momento</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="camera-view-container" class="hidden">
+                <div class="mb-4 hidden">
+                    <label for="photo-camera-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Seleccionar cámara:</label>
+                    <select id="photo-camera-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></select>
+                </div>
+                <video id="camera-stream" playsinline autoplay></video>
+                <canvas id="photo-canvas" class="hidden"></canvas>
+                <button id="capture-photo-btn" class="mt-4 w-full py-2 px-4 rounded-lg btn-gradient">
+                    <i class="fa-solid fa-camera-retro mr-2"></i>Capturar Foto
+                </button>
+                 <button id="switch-to-upload-btn" class="mt-2 w-full py-2 px-4 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">
+                    <i class="fa-solid fa-upload mr-2"></i>Volver a opciones
+                </button>
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button id="photo-close-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <div id="edit-user-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Editar Usuario Resguardante</h3>
+            <div class="space-y-4">
+                 <div>
+                    <label for="edit-user-name" class="block text-sm font-medium">Nombre</label>
+                    <input type="text" id="edit-user-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                </div>
+                <div>
+                    <label for="edit-user-location" class="block text-sm font-medium">Ubicación</label>
+                    <input type="text" id="edit-user-location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                </div>
+                 <div>
+                    <label for="edit-user-area" class="block text-sm font-medium">Área</label>
+                     <select id="edit-user-area" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-4 mt-6">
+                <button id="edit-user-cancel-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="edit-user-save-btn" class="px-4 py-2 rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition-colors">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qr-scanner-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Escanear Código QR</h3>
+            <div class="mb-4 hidden">
+                <label for="qr-camera-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Seleccionar cámara:</label>
+                <select id="qr-camera-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></select>
+            </div>
+            <div id="qr-reader" class="w-full rounded-lg overflow-hidden border-2 border-gray-300"></div>
+            <div id="qr-scanner-controls" class="flex justify-end mt-4">
+                <button id="qr-scanner-close-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <div id="item-detail-view-modal" class="modal-overlay">
+        <div class="modal-content bg-white p-0 w-full h-full md:h-auto md:max-w-2xl md:rounded-xl flex flex-col">
+            <header class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
+                <h3 id="detail-view-title" class="text-lg font-bold">Detalles del Bien</h3>
+                <button id="detail-view-close-btn" class="px-3 py-1 rounded-full text-gray-700 bg-gray-200 hover:bg-gray-300 dark:text-gray-200 dark:bg-slate-600 dark:hover:bg-slate-500 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+    
+            <main class="flex-grow overflow-y-auto p-4 md:p-6 space-y-4">
+                <div id="detail-view-photo-container" class="w-full h-64 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                    <img id="detail-view-photo" src="" alt="Foto del bien" class="hidden max-w-full max-h-full object-contain rounded-lg">
+                    <span id="detail-view-no-photo" class="text-gray-500">Sin fotografía</span>
+                </div>
+    
+                <div id="detail-view-info" class="space-y-3">
+                    <div>
+                        <label class="text-sm font-semibold text-gray-500">Clave Única:</label>
+                        <p id="detail-view-clave" class="text-lg font-mono"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-gray-500">Descripción Completa:</label>
+                        <p id="detail-view-descripcion" class="text-base"></p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                        <div>
+                            <label class="text-sm font-semibold text-gray-500">Marca:</label>
+                            <p id="detail-view-marca" class="text-base"></p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-semibold text-gray-500">Modelo:</label>
+                            <p id="detail-view-modelo" class="text-base"></p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-semibold text-gray-500">Serie:</label>
+                            <p id="detail-view-serie" class="text-base"></p>
+                        </div>
+                    </div>
+                     <div>
+                        <label class="text-sm font-semibold text-gray-500">Asignado a:</label>
+                        <p id="detail-view-usuario" class="text-base font-semibold"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-gray-500">Área Original del Bien:</label>
+                        <p id="detail-view-area" class="text-base font-semibold"></p>
+                    </div>
+                    <div id="detail-view-area-warning" class="mt-3 p-3 rounded-lg text-sm">
+                        </div>
+                </div>
+            </main>
+    
+            <footer class="p-3 border-t border-gray-200 dark:border-slate-700 grid grid-cols-2 md:grid-cols-4 gap-2 sticky bottom-0 bg-gray-50 dark:bg-slate-900/80 backdrop-blur-sm md:rounded-b-xl">
+            <button id="detail-view-ubicar-btn" class="py-2 px-3 rounded-lg text-white bg-green-500 hover:bg-green-600 text-sm"><i class="fa-solid fa-check mr-2"></i>Ubicar</button>
+                <button id="detail-view-reetiquetar-btn" class="py-2 px-3 rounded-lg text-white bg-yellow-500 hover:bg-yellow-600 text-sm"><i class="fa-solid fa-tag mr-2"></i>Re-etiquetar</button>
+                <button id="detail-view-nota-btn" class="py-2 px-3 rounded-lg text-white bg-blue-500 hover:bg-blue-600 text-sm"><i class="fa-solid fa-pencil mr-2"></i>Nota</button>
+                <button id="detail-view-foto-btn" class="py-2 px-3 rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 text-sm"><i class="fa-solid fa-camera mr-2"></i>Foto</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="print-view-container" aria-hidden="true">
+        
+        <div id="print-session-summary" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <p>Dirección de Almacén e Inventarios</p>
+                    <h1>Resumen de Sesión de Inventario</h1>
+                </div>
+                <div id="print-session-date" class="print-header-date"></div>
+            </header>
+            <div id="print-session-location" class="print-info-grid"></div>
+            <div id="print-session-areas" class="print-section"></div>
+            <div id="print-session-locations" class="print-section"></div>
+            <div id="print-session-stats-general" class="print-section"></div>
+            <div id="print-session-stats-detailed" class="print-section"></div>
+            <div id="print-session-actions" class="print-section"></div>
+            <div class="print-signatures">
+                <div class="print-signature-box">
+                    <div id="print-session-author-sig" class="print-signature-line"></div>
+                    <span id="print-session-author-name"></span><br>
+                    <span>Realizó Inventario</span>
+                </div>
+                <div class="print-signature-box">
+                    <div id="print-session-responsible-sig" class="print-signature-line"></div>
+                    <span id="print-session-responsible-name"></span><br>
+                    <span>Responsable del Área</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="print-area-closure" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <h1>Acta de Cierre de Inventario Físico</h1>
+                    <h2 id="print-area-closure-name"></h2>
+                </div>
+                <div id="print-area-closure-date" class="print-header-date"></div>
+            </header>
+            <div id="print-area-closure-info" class="print-info-grid"></div>
+            <div id="print-area-closure-summary" class="print-section"></div>
+            <div id="print-area-closure-users" class="print-section"></div>
+            <div id="print-area-closure-actions" class="print-section"></div>
+            <div class="print-signatures">
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-area-closure-author-name"></span><br>
+                    <span>Entrega (Inventario)</span>
+                </div>
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-area-closure-responsible-name"></span><br>
+                    <span>Recibe de Conformidad</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="print-resguardo" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <h1 id="print-resguardo-title"></h1>
+                    <p>Dirección de Almacén e Inventarios</p>
+                    <h2 id="print-resguardo-area"></h2>
+                </div>
+                <div id="print-resguardo-date" class="print-header-date"></div>
+            </header>
+            <p id="print-resguardo-text" class="print-main-text"></p>
+            <table id="print-resguardo-table" class="print-table">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+            <p id="print-resguardo-count" class="print-footer-count"></p>
+            <div class="print-signatures">
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-resguardo-author-name"></span><br>
+                    <span id="print-resguardo-author-title"></span>
+                </div>
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-resguardo-responsible-name"></span><br>
+                    <span>Firma de Conformidad</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="print-simple-pending" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <h1>Reporte de Bienes Pendientes</h1>
+                    <h2>Dirección de Almacén e Inventarios</h2>
+                    <h2 id="print-simple-pending-area"></h2>
+                </div>
+                <div id="print-simple-pending-date" class="print-header-date"></div>
+            </header>
+            <table id="print-simple-pending-table" class="print-table">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+            <div class="print-signatures">
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-simple-pending-author-name"></span><br>
+                    <span>Realizó Inventario</span>
+                </div>
+                <div class="print-signature-box">
+                    <div class="print-signature-line"></div>
+                    <span id="print-simple-pending-responsible-name"></span><br>
+                    <span>Recibe Copia de Pendientes</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="print-tasks-report" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <h1>Plan de Acción Recomendado</h1>
+                </div>
+                <div id="print-tasks-date" class="print-header-date"></div>
+            </header>
+            <div id="print-tasks-content" class="print-section">
+                </div>
+        </div>
+
+        <div id="print-layout-view" class="print-page">
+            <header class="print-header">
+                <img src="logo.png" alt="Logo">
+                <div class="print-header-titles">
+                    <h1>Croquis de Ubicaciones</h1>
+                    <h2 id="print-layout-page-number">Página 1</h2>
+                </div>
+                <div id="print-layout-date" class="print-header-date"></div>
+            </header>
+            
+            <div id="print-layout-user-list" class="print-section">
+                 <h2>Listado de Usuarios por Área</h2>
+                 </div>
+            
+            <div class="print-section">
+                <h2>Croquis</h2>
+                <div class="print-layout-canvas-container">
+                    <div id="print-layout-canvas">
+                        </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    <div id="app-container" class="min-h-screen p-4 md:p-8 transition-all duration-300">
+        
+        <div id="login-page" class="w-full max-w-md mx-auto my-auto p-8 rounded-xl shadow-xl glass-effect">
+            <img src="logo.png" alt="Logo de la Institución" class="max-w-xs mx-auto mb-6 h-32 object-contain">
+            <h1 class="text-3xl font-bold text-center mb-6 text-gray-900">Inventario Pro</h1>
+            <p class="text-center text-gray-600 mb-8">Ingresa tu número de empleado para continuar.</p>
+            <div class="space-y-4">
+                <input type="number" id="employee-number-input" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3" placeholder="Número de Empleado">
+                <button id="employee-login-btn" class="w-full py-3 px-4 rounded-lg font-bold btn-gradient">Ingresar</button>
+            </div>
+             <p class="text-center text-xs text-gray-500 mt-6">
+                <a href="#" id="clear-session-link" class="hover:underline">¿Problemas? Limpiar sesión completa</a>
+            </p>
+        </div>
+
+        <div id="main-app" class="hidden w-full max-w-7xl mx-auto flex flex-col">
+            
+            <div id="header-and-dashboard" class="">
+                <header class="p-6 rounded-xl shadow-md glass-effect flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <div id="logo-container">
+                            <img id="logo-img" src="logo.png" alt="Logo">
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold cursor-pointer">Inventario Pro</h2> 
+                            <p class="text-sm text-gray-600">Dirección de Almacén e Inventarios</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end flex-wrap gap-2 md:space-x-4">
+                        <div class="text-right">
+                            <span id="current-user-name" class="text-xs font-semibold text-gray-700 dark:text-gray-300 block"></span>
+                        </div>
+                        <button id="show-log-btn" class="py-2 px-4 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition-colors" title="Ver registro de actividad">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                        </button>
+                        <button id="upload-btn" class="py-2 px-4 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Cargar Excel</button>
+                        <input type="file" id="file-input" class="hidden" multiple accept=".xls,.xlsx,.csv">
+                        <button id="logout-btn" class="py-2 px-6 rounded-lg font-bold text-white bg-red-500 hover:bg-red-600 transition-colors"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button>
+                    </div>
+                </header>
+                
+                <div id="dashboard-container" class="space-y-4 mt-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-6 rounded-xl shadow-md glass-effect text-center">
+                            <h3 class="text-lg font-semibold text-gray-600">Total Bienes</h3>
+                            <p id="total-items" class="text-3xl font-bold mt-2">0</p>
+                        </div>
+                        <div class="p-6 rounded-xl shadow-md glass-effect text-center">
+                            <h3 class="text-lg font-semibold text-gray-600">Bienes Ubicados</h3>
+                            <p id="located-items" class="text-3xl font-bold mt-2">0</p>
+                        </div>
+                        <div class="p-6 rounded-xl shadow-md glass-effect text-center">
+                            <h3 class="text-lg font-semibold text-gray-600">Bienes Pendientes</h3>
+                            <p id="pending-items" class="text-3xl font-bold mt-2">0</p>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 rounded-xl shadow-md glass-effect text-center">
+                            <h3 class="text-md font-semibold text-gray-600">Áreas de Trabajo</h3>
+                            <p id="working-areas-count" class="text-2xl font-bold mt-1">0</p>
+                        </div>
+                        <div id="daily-progress-card" class="p-4 rounded-xl shadow-md glass-effect text-center relative">
+                            <h3 class="text-md font-semibold text-gray-600">Avance del Día</h3>
+                            <p id="daily-progress" class="text-2xl font-bold mt-1">0</p>
+                        </div>
+                         <div class="p-4 rounded-xl shadow-md glass-effect text-center">
+                            <h3 class="text-md font-semibold text-gray-600">Bienes Adicionales</h3>
+                            <p id="additional-items-count" class="text-2xl font-bold mt-1">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="dashboard-toggle-container" class="w-full flex justify-center mb-8 -mt-6">
+                <button id="dashboard-toggle-btn" class="px-4 py-1 rounded-full bg-white dark:bg-slate-700 shadow-md hover:shadow-lg transition-shadow">
+                    <i id="dashboard-toggle" class="fa-solid fa-chevron-up text-gray-600 dark:text-gray-300"></i>
+                </button>
+            </div>
+
+            <div id="tabs-container-wrapper" class="border-b border-gray-300">
+                <nav id="tabs-container" class="flex justify-between items-center" aria-label="Tabs">
+                    <button data-tab="users" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Usuarios</button>
+                    <div id="main-tabs-group">
+                        <button data-tab="inventory" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Inventario</button>
+                        <button data-tab="adicionales" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Adicionales</button>
+                        <button data-tab="reports" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Reportes</button>
+                        <button data-tab="settings" class="tab-btn whitespace-nowrap py-4 px-2 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"><i class="fa-solid fa-gear text-lg"></i></button>
+                    </div>
+                </nav>
+            </div>
+
+            <div id="main-content-area" class="p-6 rounded-xl shadow-md glass-effect">
+            
+            <div id="active-user-banner" class="hidden active-user-banner mb-4 p-3 rounded-lg border-l-4 border-green-600 bg-green-100 dark:bg-green-900/50 flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-user-check text-green-700 dark:text-green-200 text-xl mr-3"></i>
+                    <div>
+                        <span class="text-sm font-semibold text-green-800 dark:text-green-100 block">Usuario Activo:</span>
+                        <span id="active-user-banner-name" class="font-bold text-green-900 dark:text-white"></span>
+                        <span id="active-user-banner-area" class="text-sm text-green-800 dark:text-green-100 block"></span>
+                    </div>
+                </div>
+                <button id="deactivate-user-btn" class="px-3 py-1 rounded-lg text-xs font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Desactivar</button>
+            </div>
+            <div id="users-tab" class="tab-content">
+        <div class="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
+            <div class="md:w-1/3 p-4 rounded-xl shadow glass-effect">
+                <h3 class="text-lg font-bold mb-4">Registrar Usuario</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="user-name" class="block text-sm font-medium">Nombre</label>
+                        <input type="text" id="user-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                    </div>
+                    <div>
+                        <label for="user-location-select" class="block text-sm font-medium">Ubicación</label>
+                        <select id="user-location-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                            <option value="OFICINA">OFICINA</option>
+                            <option value="AREA SECRETARIAL">AREA SECRETARIAL</option>
+                            <option value="CUBICULO">CUBÍCULO</option>
+                            <option value="CABALLERIZA">CABALLERIZA</option>
+                            <option value="PASILLO">PASILLO</option>
+                            <option value="SALA DE JUNTAS">SALA DE JUNTAS</option>
+                            <option value="PAPELERIA">PAPELERÍA</option>
+                            <option value="FOTOCOPIADO">FOTOCOPIADO</option>
+                            <option value="BODEGA">BODEGA</option>
+                            <option value="SALA DE ESPERA">SALA DE ESPERA</option>
+                            <option value="AREA COMUN">ÁREA COMÚN</option>
+                            <option value="OTRA">Otra (manual)</option>
+                        </select>
+                        <input type="text" id="user-location-manual" class="mt-2 hidden w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ubicación manual">
+                    </div>
+                    <div>
+                        <label for="user-area-select" class="block text-sm font-medium">Área</label>
+                        <select id="user-area-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></select>
+                    </div>
+                    <button id="create-user-btn" class="w-full py-2 px-4 rounded-lg font-bold btn-gradient">Crear Usuario</button>
+                </div>
+            </div>
+            <div class="md:w-2/3 p-4 rounded-xl shadow glass-effect flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">Usuarios Registrados</h3>
+                    <span id="user-count-badge" class="px-3 py-1 text-sm font-semibold text-indigo-800 bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-200 rounded-full"></span>
+                </div>
+        
+                <div class="relative mb-4">
+                    <input type="text" id="user-search-input" placeholder="Buscar por nombre, ubicación o área..." class="w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-indigo-500">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+        
+                <div id="registered-users-list" class="space-y-2 max-h-96 overflow-y-auto flex-grow">
+                    <p class="text-gray-500">No hay usuarios registrados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-tab" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+             <div class="relative md:col-span-2">
+                <input type="text" id="search-input" placeholder="Buscar por clave, descripción, marca, etc." class="w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-indigo-500">
+                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <select id="status-filter" class="w-full rounded-lg border p-2">
+                <option value="all">Todos los estados</option>
+                <option value="SI">Ubicado</option>
+                <option value="NO">Pendiente</option>
+            </select>
+             <select id="area-filter-inventory" class="w-full rounded-lg border p-2">
+                <option value="all">Todas las áreas</option>
+            </select>
+            <select id="book-type-filter" class="w-full rounded-lg border p-2">
+                <option value="all">Todos los tipos</option>
+            </select>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4">
+            <button id="ubicado-btn" class="py-2 px-4 rounded-lg text-white bg-green-500 hover:bg-green-600"><i class="fa-solid fa-check mr-2"></i>Ubicar</button>
+            <button id="re-etiquetar-btn" class="py-2 px-4 rounded-lg text-white bg-yellow-500 hover:bg-yellow-600"><i class="fa-solid fa-tag mr-2"></i>Re-etiquetar</button>
+            <button id="desubicar-btn" class="py-2 px-4 rounded-lg text-white bg-orange-500 hover:bg-orange-600"><i class="fa-solid fa-undo mr-2"></i>Des-ubicar</button>
+            <button id="add-note-btn" class="py-2 px-4 rounded-lg text-white bg-blue-500 hover:bg-blue-600"><i class="fa-solid fa-pencil mr-2"></i>Nota</button>
+            <button id="qr-scan-btn" class="py-2 px-4 rounded-lg btn-gradient"><i class="fa-solid fa-qrcode mr-2"></i>Escanear QR</button>
+            <button id="clear-search-btn" class="py-2 px-4 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300"><i class="fa-solid fa-xmark mr-2"></i>Limpiar</button>
+        </div>
+
+        <div id="additional-search-results-container" class="hidden mb-6">
+            <h4 class="text-lg font-bold mb-2 border-b pb-2 border-gray-300 dark:border-slate-600">Resultados en Bienes Adicionales</h4>
+            <div id="additional-search-results-list" class="space-y-2 max-h-60 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="inventory-table-container">
+            <table class="min-w-full divide-y divide-gray-200">
+                 <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]"><input type="checkbox" id="select-all-checkbox" class="rounded"></th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Clave</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%]">Descripción</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Marca</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Modelo</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Serie</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Usuario</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">Ubicado</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">Etiqueta</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+         <div id="pagination-controls" class="flex justify-center items-center space-x-2 mt-4">
+            <button id="prev-page-btn" class="px-3 py-1 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50" disabled>Anterior</button>
+            <span id="page-info" class="text-sm text-gray-600">Página 1 de 1</span>
+            <button id="next-page-btn" class="px-3 py-1 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50" disabled>Siguiente</button>
+        </div>
+    </div>
+
+    <div id="adicionales-tab" class="tab-content">
+         <div class="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
+            <div class="md:w-1/3 p-4 rounded-xl shadow glass-effect">
+                <h3 class="text-lg font-bold mb-4">Registrar Bien Adicional</h3>
+                <form id="adicional-form" class="space-y-4">
+                    <div>
+                        <label for="ad-clave">Clave Única</label>
+                        <input type="text" id="ad-clave" name="clave" class="w-full rounded-md border p-2" autocomplete="off">
+                        <p id="ad-clave-feedback" class="text-red-500 text-xs mt-1 h-4"></p>
+                    </div>
+                    <div><label for="ad-descripcion">Descripción</label><input type="text" id="ad-descripcion" name="descripcion" class="w-full rounded-md border p-2"></div>
+                    <div><label for="ad-marca">Marca</label><input type="text" id="ad-marca" name="marca" class="w-full rounded-md border p-2"></div>
+                    <div><label for="ad-modelo">Modelo</label><input type="text" id="ad-modelo" name="modelo" class="w-full rounded-md border p-2"></div>
+                    <div>
+                        <label for="ad-serie">Serie</label>
+                        <input type="text" id="ad-serie" name="serie" class="w-full rounded-md border p-2">
+                        <p id="ad-serie-feedback" class="text-red-500 text-xs mt-1 h-4"></p>
+                    </div>
+                    <div><label for="ad-area">Área de Procedencia</label><input type="text" id="ad-area" name="area" class="w-full rounded-md border p-2"></div>
+                    <div>
+                        <label class="block text-sm font-medium">Bien Personal</label>
+                        <div class="flex items-center space-x-4 mt-1">
+                            <label><input type="radio" name="personal" value="Si"> Sí</label>
+                            <label><input type="radio" name="personal" value="No" checked> No</label>
+                        </div>
+                    </div>
+                    <button id="add-adicional-btn" type="button" class="w-full py-2 px-4 rounded-lg font-bold btn-gradient">Registrar Bien Adicional</button>
+                </form>
+            </div>
+            <div class="md:w-2/3 p-4 rounded-xl shadow glass-effect">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">Bienes Adicionales</h3>
+                    <span id="additional-items-total" class="px-3 py-1 text-sm font-semibold text-indigo-800 bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-200 rounded-full">Total: 0</span>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <div class="flex-1">
+                        <label for="ad-area-filter" class="text-sm font-medium">Filtrar por Área de Usuario:</label>
+                        <select id="ad-area-filter" class="w-full mt-1 rounded-md border-gray-300 shadow-sm p-2"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="ad-user-filter" class="text-sm font-medium">Filtrar por Usuario:</label>
+                        <select id="ad-user-filter" class="w-full mt-1 rounded-md border-gray-300 shadow-sm p-2">
+                             <option value="all">Todos los usuarios</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="adicionales-list" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500">No hay bienes adicionales registrados.</p>
+                </div>
+                <button id="print-adicionales-resguardo-btn" class="mt-4 w-full py-2 px-4 rounded-lg text-white bg-purple-500 hover:bg-purple-600 transition-colors"><i class="fa-solid fa-print mr-2"></i>Imprimir Informe de Adicionales</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reports-tab" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="p-4 rounded-xl shadow glass-effect max-h-96 overflow-y-auto">
+                <h3 class="text-lg font-bold mb-4">Estadísticas Detalladas</h3>
+                
+                <div id="area-progress-container" class="space-y-3 mb-4 pr-2">
+                    </div>
+                <div id="general-stats" class="space-y-4 text-sm"></div>
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h3 class="text-lg font-bold mb-4">Filtros y Exportación</h3>
+                <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                    <select id="report-user-filter" class="w-full rounded-md border p-2" title="Filtrar por Usuario">
+                         <option value="all">Todos los usuarios</option>
+                    </select>
+                    <select id="report-area-filter" class="w-full rounded-md border p-2" title="Filtrar por Área"></select>
+                </div>
+                <div id="report-buttons-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button data-report-type="inventory" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"><i class="fa-solid fa-list-check mr-2"></i>Generar Reporte de Inventario</button>
+                    <button data-report-type="individual_resguardo" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-purple-500 hover:bg-purple-600 transition-colors">
+                        <i class="fa-solid fa-print mr-2"></i>Imprimir Resguardo Individual
+                    </button>
+                    <button data-report-type="labels" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-green-700 hover:bg-green-800"><i class="fa-solid fa-tags mr-2"></i>Generar Reporte de Etiquetas</button>
+                    <button id="export-labels-xlsx-btn" class="w-full py-2 px-4 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors"><i class="fa-solid fa-file-excel mr-2"></i>Exportar Etiquetas (XLSX)</button>
+                    <button data-report-type="pending" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-red-500 hover:bg-red-600"><i class="fa-solid fa-clock mr-2"></i>Generar Reporte de Pendientes</button>
+                    <button data-report-type="simple_pending" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors">
+                        <i class="fa-solid fa-print mr-2"></i>Imprimir Reporte de Pendientes
+                    </button>
+                    <button data-report-type="institutional_adicionales" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-orange-500 hover:bg-orange-600 transition-colors">
+                    <i class="fa-solid fa-file-signature mr-2"></i>Generar Reporte de Adicionales (Institucionales)
+                    </button>
+                    <button data-report-type="adicionales_informe" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-purple-500 hover:bg-purple-600 transition-colors">
+                        <i class="fa-solid fa-print mr-2"></i>Imprimir Informe de Adicionales
+                    </button>
+                    <button data-report-type="notes" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-cyan-500 hover:bg-cyan-600"><i class="fa-solid fa-note-sticky mr-2"></i>Generar Reporte de Notas</button>
+                    <button data-report-type="mismatched" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-orange-500 hover:bg-orange-600"><i class="fa-solid fa-shuffle mr-2"></i>Reporte de Bienes Fuera de Área</button>
+                    <button id="export-xlsx-btn" class="w-full py-2 px-4 rounded-lg text-white bg-teal-500 hover:bg-teal-600 transition-colors">
+                        <i class="fa-solid fa-file-excel mr-2"></i>Exportar Inventario a XLSX
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="report-table-container" class="mt-6 hidden">
+            <h3 id="report-table-title" class="text-lg font-bold mb-2 hidden"></h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 shadow-sm rounded-lg">
+                    <thead class="bg-gray-50"><tr></tr></thead>
+                    <tbody id="report-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+    <div id="settings-tab" class="tab-content">
+        <div class="space-y-6">
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2 flex justify-between items-center">
+                    <span>Directorio de Responsables de Área</span>
+                    <span id="directory-count" class="text-sm font-bold text-gray-600 dark:text-gray-400"></span>
+                </h4>
+                <div id="directory-container" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    <p class="text-gray-500">No se han cargado áreas.</p>
+                </div>
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2 flex justify-between items-center">
+                    <span>Gestión de Listados</span>
+                    <span id="loaded-lists-count" class="text-sm font-bold text-gray-600 dark:text-gray-400"></span>
+                </h4>
+                <div id="loaded-lists-container" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    <p class="text-gray-500">No hay listados cargados.</p>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2">Plano de Ubicaciones</h4>
+                <p class="text-sm text-gray-600 mb-3">
+                    Crea un croquis visual de las ubicaciones físicas registradas.
+                </p>
+                <button id="open-layout-editor-btn" class="w-full py-2 px-4 rounded-lg btn-gradient">
+                    <i class="fa-solid fa-map-location-dot mr-2"></i>Abrir Editor de Croquis
+                </button>
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2">Resumen de Sesión y Plan de Acción</h4>
+                 <div class="space-y-3">
+                    <div>
+                        <label for="summary-author" class="block text-sm font-medium">Realizado por:</label>
+                        <input type="text" id="summary-author" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-100 dark:bg-slate-700" placeholder="Se rellena automáticamente" readonly>
+                    </div>
+                     <div>
+                        <label for="summary-area-responsible" class="block text-sm font-medium">Responsable del Área (Revisión):</label>
+                        <input type="text" id="summary-area-responsible" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nombre de quien recibe y firma">
+                    </div>
+                    <div>
+                        <label for="summary-location" class="block text-sm font-medium">Ubicación Física del Inventario:</label>
+                        <input type="text" id="summary-location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ej. Edificio A, Piso 2, Ala Norte">
+                    </div>
+                </div>
+                <div class="mt-4 space-y-2">
+                    <button data-report-type="session_summary" class="report-btn w-full py-2 px-4 rounded-lg btn-gradient"><i class="fa-solid fa-print mr-2"></i>Generar Resumen de Sesión</button>
+                    <button data-report-type="tasks_report" class="report-btn w-full py-2 px-4 rounded-lg text-white bg-cyan-500 hover:bg-cyan-600">
+                        <i class="fa-solid fa-print mr-2"></i>Generar/Imprimir Plan de Acción
+                    </button>
+                </div>
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2">Gestión de Sesión y Datos</h4>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button id="export-session-btn" class="py-2 px-4 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"><i class="fa-solid fa-download mr-2"></i>Exportar Sesión (.zip)</button>
+                    <button id="import-session-btn" class="py-2 px-4 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"><i class="fa-solid fa-upload mr-2"></i>Importar Sesión (.zip)</button>
+                    <input type="file" id="import-file-input" class="hidden" accept=".zip">
+                    
+                    <button id="import-photos-btn" class="py-2 px-4 rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"><i class="fa-solid fa-images mr-2"></i>Importar Fotos</button>
+                    <input type="file" id="import-photos-input" class="hidden" multiple accept="image/*">
+
+                    <button id="restore-photos-from-backup-btn" class="py-2 px-4 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors"><i class="fa-solid fa-file-zipper mr-2"></i>Restaurar Fotos (Backup)</button>
+                    <input type="file" id="restore-photos-input" class="hidden" accept=".zip">
+
+                    <button id="finalize-inventory-btn" class="md:col-span-2 py-2 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"><i class="fa-solid fa-lock mr-2"></i>Finalizar y Bloquear Inventario</button>
+                </div>
+            </div>
+           
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2">Temas</h4>
+                <div class="flex space-x-4">
+                    <button data-theme="light" class="px-4 py-2 rounded-lg bg-white hover:bg-gray-100">Claro</button>
+                    <button data-theme="dark" class="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700">Oscuro</button>
+                </div>
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 class="text-lg font-semibold mb-2">Auto-guardado</h4>
+                <p>Intervalo de guardado automático (segundos):</p>
+                <input type="number" id="autosave-interval" class="w-full md:w-1/4 rounded-md border p-2 mt-2" value="30">
+            </div>
+            <div class="p-4 rounded-xl shadow glass-effect">
+                <h4 id="about-header" class="text-lg font-semibold mb-2 cursor-pointer select-none">Acerca de Inventario Pro</h4>
+                <div id="about-content" class="hidden">
+                    <p class="text-sm text-gray-600">
+                        Esta aplicación fue desarrollada y mejorada en colaboración.
+                    </p>
+                    <ul class="list-disc list-inside text-sm mt-2">
+                        <li>Desarrollada por: <strong>Mario Benítez</strong> de <strong>Astronauta™</strong>.</li>
+                        <li>Con la colaboración de: <strong>Ing. Eduardo Vázquez</strong> </li>
+                        <li>Con la ayuda de la <strong>Directora Karla Nathalia Gayosso <strong></li>
+                        <li>Todos los derechos reservados 2025, prohibido su uso fuera de Direccion de Almacén e Inventarios <li> <strong>MBH de Astronauta™ 2025</strong>
+                    </ul>
+                    <p class="text-xs text-gray-500 mt-4">Versión 7.3 (Pulido)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div> </div> </div> </div> 
+    
+    <div id="layout-editor-modal" class="modal-overlay" style="z-index: 1090;">
+        <div class="modal-content flex flex-col w-auto max-w-6xl h-[90vh] bg-white dark:bg-slate-900 p-0 rounded-xl">
+        <header class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-slate-700">
+                <h3 class="text-xl font-bold">Editor de Croquis (Layout)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button id="layout-add-image-btn" class="px-4 py-2 rounded-lg text-white bg-teal-500 hover:bg-teal-600 transition-colors"><i class="fa-solid fa-image mr-2"></i>Cargar Imagen</button>
+                    <input type="file" id="layout-image-input" class="hidden" accept="image/*">
+                <button id="layout-print-btn" class="px-4 py-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"><i class="fa-solid fa-print mr-2"></i>Imprimir</button>
+                    <button id="layout-save-btn" class="px-4 py-2 rounded-lg text-white bg-green-500 hover:bg-green-600 transition-colors"><i class="fa-solid fa-save mr-2"></i>Guardar</button>
+                    <button id="layout-close-btn" class="px-3 py-2 rounded-lg text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors">Cerrar</button>
+                </div>
+            </header>
+
+            <main class="flex-grow flex flex-col md:flex-row h-[calc(100%-65px)] overflow-hidden rounded-b-xl">
+            <aside class="w-full md:w-60 h-1/3 md:h-full flex flex-col border-b md:border-b-0 md:border-r border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                <div id="layout-tools-sidebar" class="flex-shrink-0 flex items-center gap-2 flex-wrap p-2">
+                        <h4 class="font-bold text-sm p-2 w-full">Formas:</h4>
+                        <div class="tool-item draggable-tool" data-tool-type="text" title="Añadir Texto">
+                            <i class="fa-solid fa-font"></i>
+                        </div>
+                        <div class="tool-item draggable-tool" data-tool-type="arrow" title="Flecha (Rotable)">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </div>
+                        <div class="tool-item draggable-tool" data-tool-type="note" title="Nota Adhesiva">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 flex-grow overflow-y-auto">
+                        <h4 class="font-bold mb-2">Ubicaciones Registradas</h4>
+                        <p class="text-xs text-gray-500 mb-3">
+                            Haz clic o arrastra una ubicación al lienzo.
+                            </p>
+                        <div id="layout-sidebar-locations" class="space-y-2">
+                            </div>
+                    </div>
+                </aside>
+                <div id="layout-canvas-wrapper" class="w-full md:w-3/4 h-2/3 md:h-full">
+                    <div id="layout-canvas">
+                        </div>
+                    <div id="layout-pagination-controls">
+                        <button id="layout-page-prev" class="px-3 py-1 rounded-full text-sm hover:bg-gray-200 dark:hover:bg-slate-700">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <input type="text" id="layout-page-name" class="text-sm font-semibold text-center bg-transparent w-24 border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-indigo-500">
+                        <button id="layout-page-next" class="px-3 py-1 rounded-full text-sm hover:bg-gray-200 dark:hover:bg-slate-700">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                        <button id="layout-page-add" class="ml-2 px-3 py-1 rounded-full text-sm text-green-600 hover:bg-green-100 dark:hover:bg-green-900">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <button id="layout-page-reset" class="px-3 py-1 rounded-full text-sm text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900" title="Restablecer lienzo">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                        <button id="layout-page-remove" class="px-3 py-1 rounded-full text-sm text-red-600 hover:bg-red-100 dark:hover:bg-red-900">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+<div id="progress-tooltip"></div>
+<div id="toast-container" class="fixed bottom-5 right-5 z-[1001] space-y-2"></div>
+
+<div id="photo-preview-popover" class="hidden fixed p-1 bg-white border border-gray-300 shadow-lg rounded-md z-[2000]">
+    <img id="photo-preview-img" src="" class="max-w-xs max-h-48 object-contain">
+</div>
+
+<script src="app.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('serviceworker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registrado con éxito: ', registration.scope);
+                })
+                .catch(error => {
+                    console.log('Fallo en el registro del ServiceWorker: ', error);
+                });
+        });
+    }
+</script>
+
+</body>
+</html>
